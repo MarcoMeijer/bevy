@@ -329,7 +329,16 @@ pub fn extract_uinode_images(
             .and_then(|s| s.texture_rect(&texture_atlases))
             .map(|r| r.as_rect());
 
-        let mut rect = match (atlas_rect, image.rect) {
+        let atlas_size = if let Some(atlas) = atlas {
+            let Some(layout) = texture_atlases.get(&atlas.layout) else {
+                continue;
+            };
+            Some(layout.size.as_vec2())
+        } else {
+            None
+        };
+
+        let rect = match (atlas_rect, image.rect) {
             (None, None) => Rect {
                 min: Vec2::ZERO,
                 max: uinode.calculated_size,
@@ -343,14 +352,14 @@ pub fn extract_uinode_images(
             }
         };
 
-        let atlas_scaling = if atlas_rect.is_some() || image.rect.is_some() {
+        /* if atlas_rect.is_some() || image.rect.is_some() {
             let atlas_scaling = uinode.size() / rect.size();
             rect.min *= atlas_scaling;
             rect.max *= atlas_scaling;
-            Some(atlas_scaling)
-        } else {
-            None
-        };
+            if let Some(atlas_size) = &mut atlas_size {
+                *atlas_size *= atlas_scaling;
+            }
+        } */
 
         let ui_logical_viewport_size = camera_query
             .get(camera_entity)
@@ -971,7 +980,6 @@ pub fn prepare_uinodes(
                         if let Some(gpu_image) = gpu_images.get(extracted_uinode.image) {
                             batch_image_handle = extracted_uinode.image;
                             existing_batch.as_mut().unwrap().1.image = extracted_uinode.image;
-
                             image_bind_groups
                                 .values
                                 .entry(batch_image_handle)
