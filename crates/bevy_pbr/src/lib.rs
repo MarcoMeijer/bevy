@@ -190,6 +190,7 @@ impl Default for PbrPlugin {
 
 impl Plugin for PbrPlugin {
     fn build(&self, app: &mut App) {
+        return;
         load_internal_asset!(
             app,
             PBR_TYPES_SHADER_HANDLE,
