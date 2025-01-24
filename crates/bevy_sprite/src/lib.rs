@@ -122,13 +122,8 @@ impl Plugin for SpritePlugin {
             .register_type::<TextureSlicer>()
             .register_type::<Anchor>()
             .register_type::<TextureAtlas>()
-            .register_type::<Mesh2d>()
             .register_type::<SpriteSource>()
-            .add_plugins((
-                Mesh2dRenderPlugin,
-                ColorMaterialPlugin,
-                ExtractComponentPlugin::<SpriteSource>::default(),
-            ))
+            .add_plugins(ExtractComponentPlugin::<SpriteSource>::default())
             .add_systems(
                 PostUpdate,
                 (
@@ -169,9 +164,7 @@ impl Plugin for SpritePlugin {
                 .add_systems(
                     Render,
                     (
-                        queue_sprites
-                            .in_set(RenderSet::Queue)
-                            .ambiguous_with(queue_material2d_meshes::<ColorMaterial>),
+                        queue_sprites.in_set(RenderSet::Queue),
                         prepare_sprite_image_bind_groups.in_set(RenderSet::PrepareBindGroups),
                         prepare_sprite_view_bind_groups.in_set(RenderSet::PrepareBindGroups),
                     ),
