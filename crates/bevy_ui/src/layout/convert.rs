@@ -143,6 +143,7 @@ pub fn from_node(node: &Node, context: &LayoutContext, ignore_border: bool) -> t
             .collect::<Vec<_>>(),
         grid_row: node.grid_row.into(),
         grid_column: node.grid_column.into(),
+        ..Default::default()
     }
 }
 
