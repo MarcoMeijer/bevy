@@ -36,13 +36,8 @@ pub use winit::{
 pub use winit_config::*;
 pub use winit_windows::*;
 
-use crate::{
-    accessibility::{AccessKitAdapters, AccessKitPlugin, WinitActionRequestHandlers},
-    state::winit_runner,
-    winit_monitors::WinitMonitors,
-};
+use crate::{state::winit_runner, winit_monitors::WinitMonitors};
 
-pub mod accessibility;
 mod converters;
 pub mod cursor;
 mod state;
@@ -134,7 +129,6 @@ impl<T: Event> Plugin for WinitPlugin<T> {
                     .chain(),
             );
 
-        app.add_plugins(AccessKitPlugin);
         app.add_plugins(cursor::CursorPlugin);
 
         let event_loop = event_loop_builder
@@ -187,8 +181,6 @@ pub type CreateWindowParams<'w, 's, F = ()> = (
     >,
     EventWriter<'w, WindowCreated>,
     NonSendMut<'w, WinitWindows>,
-    NonSendMut<'w, AccessKitAdapters>,
-    ResMut<'w, WinitActionRequestHandlers>,
     Res<'w, AccessibilityRequested>,
     Res<'w, WinitMonitors>,
 );

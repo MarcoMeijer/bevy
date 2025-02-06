@@ -50,8 +50,6 @@ pub fn create_windows<F: QueryFilter + 'static>(
         mut created_windows,
         mut window_created_events,
         mut winit_windows,
-        mut adapters,
-        mut handlers,
         accessibility_requested,
         monitors,
     ): SystemParamItem<CreateWindowParams<F>>,
@@ -71,8 +69,6 @@ pub fn create_windows<F: QueryFilter + 'static>(
             event_loop,
             entity,
             &window,
-            &mut adapters,
-            &mut handlers,
             &accessibility_requested,
             &monitors,
         );

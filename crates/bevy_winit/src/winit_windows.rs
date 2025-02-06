@@ -16,9 +16,6 @@ use winit::{
 };
 
 use crate::{
-    accessibility::{
-        prepare_accessibility_for_window, AccessKitAdapters, WinitActionRequestHandlers,
-    },
     converters::{convert_enabled_buttons, convert_window_level, convert_window_theme},
     winit_monitors::WinitMonitors,
 };
@@ -47,8 +44,6 @@ impl WinitWindows {
         event_loop: &ActiveEventLoop,
         entity: Entity,
         window: &Window,
-        adapters: &mut AccessKitAdapters,
-        handlers: &mut WinitActionRequestHandlers,
         accessibility_requested: &AccessibilityRequested,
         monitors: &WinitMonitors,
     ) -> &WindowWrapper<WinitWindow> {
@@ -261,14 +256,6 @@ impl WinitWindows {
 
         let winit_window = event_loop.create_window(winit_window_attributes).unwrap();
         let name = window.title.clone();
-        prepare_accessibility_for_window(
-            &winit_window,
-            entity,
-            name,
-            accessibility_requested.clone(),
-            adapters,
-            handlers,
-        );
 
         // Do not set the grab mode on window creation if it's none. It can fail on mobile.
         if window.cursor_options.grab_mode != CursorGrabMode::None {

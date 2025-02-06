@@ -43,7 +43,6 @@ use bevy_window::{
 use bevy_window::{PrimaryWindow, RawHandleWrapper};
 
 use crate::{
-    accessibility::AccessKitAdapters,
     converters, create_windows,
     system::{create_monitors, CachedWindow},
     AppSendEvent, CreateMonitorParams, CreateWindowParams, EventLoopProxyWrapper, UpdateMode,
@@ -88,7 +87,6 @@ struct WinitAppRunnerState<T: Event> {
         EventWriter<'static, WindowScaleFactorChanged>,
         NonSend<'static, WinitWindows>,
         Query<'static, 'static, (&'static mut Window, &'static mut CachedWindow)>,
-        NonSendMut<'static, AccessKitAdapters>,
     )>,
 }
 
@@ -103,7 +101,6 @@ impl<T: Event> WinitAppRunnerState<T> {
             EventWriter<WindowScaleFactorChanged>,
             NonSend<WinitWindows>,
             Query<(&mut Window, &mut CachedWindow)>,
-            NonSendMut<AccessKitAdapters>,
         )> = SystemState::new(app.world_mut());
 
         Self {
@@ -237,7 +234,6 @@ impl<T: Event> ApplicationHandler<T> for WinitAppRunnerState<T> {
             mut window_scale_factor_changed,
             winit_windows,
             mut windows,
-            mut access_kit_adapters,
         ) = self.event_writer_system_state.get_mut(self.app.world_mut());
 
         let Some(window) = winit_windows.get_window_entity(window_id) else {
@@ -252,12 +248,6 @@ impl<T: Event> ApplicationHandler<T> for WinitAppRunnerState<T> {
 
         // Allow AccessKit to respond to `WindowEvent`s before they reach
         // the engine.
-        if let Some(adapter) = access_kit_adapters.get_mut(&window) {
-            if let Some(winit_window) = winit_windows.get_window(window) {
-                adapter.process_event(winit_window, &event);
-            }
-        }
-
         match event {
             WindowEvent::Resized(size) => {
                 react_to_resize(window, &mut win, size, &mut window_resized);
@@ -510,21 +500,13 @@ impl<T: Event> ApplicationHandler<T> for WinitAppRunnerState<T> {
                     let mut create_window =
                         SystemState::<CreateWindowParams>::from_world(self.world_mut());
 
-                    let (
-                        ..,
-                        mut winit_windows,
-                        mut adapters,
-                        mut handlers,
-                        accessibility_requested,
-                        monitors,
-                    ) = create_window.get_mut(self.world_mut());
+                    let (.., mut winit_windows, accessibility_requested, monitors) =
+                        create_window.get_mut(self.world_mut());
 
                     let winit_window = winit_windows.create_window(
                         event_loop,
                         entity,
                         &window,
-                        &mut adapters,
-                        &mut handlers,
                         &accessibility_requested,
                         &monitors,
                     );
