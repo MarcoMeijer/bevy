@@ -190,10 +190,7 @@ pub async fn initialize_renderer(
     options: &WgpuSettings,
     request_adapter_options: &RequestAdapterOptions<'_, '_>,
 ) -> Option<(RenderDevice, RenderQueue, RenderAdapterInfo, RenderAdapter)> {
-    let adapter = instance
-        .request_adapter(request_adapter_options)
-        .await
-        .expect(GPU_NOT_FOUND_ERROR_MESSAGE);
+    let adapter = instance.request_adapter(request_adapter_options).await?;
 
     let adapter_info = adapter.get_info();
     info!("{:?}", adapter_info);
