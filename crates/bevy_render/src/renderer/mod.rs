@@ -189,7 +189,7 @@ pub async fn initialize_renderer(
     instance: &Instance,
     options: &WgpuSettings,
     request_adapter_options: &RequestAdapterOptions<'_, '_>,
-) -> (RenderDevice, RenderQueue, RenderAdapterInfo, RenderAdapter) {
+) -> Option<(RenderDevice, RenderQueue, RenderAdapterInfo, RenderAdapter)> {
     let adapter = instance
         .request_adapter(request_adapter_options)
         .await
@@ -363,12 +363,12 @@ pub async fn initialize_renderer(
         .unwrap();
     let queue = Arc::new(WgpuWrapper::new(queue));
     let adapter = Arc::new(WgpuWrapper::new(adapter));
-    (
+    Some((
         RenderDevice::from(device),
         RenderQueue(queue),
         RenderAdapterInfo(WgpuWrapper::new(adapter_info)),
         RenderAdapter(adapter),
-    )
+    ))
 }
 
 /// The context with all information required to interact with the GPU.

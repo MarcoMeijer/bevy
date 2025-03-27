@@ -80,6 +80,7 @@ use renderer::{RenderAdapter, RenderAdapterInfo, RenderDevice, RenderQueue};
 use sync_world::{
     despawn_temporary_render_entities, entity_sync_system, SyncToRenderWorld, SyncWorldPlugin,
 };
+use wgpu::Backends;
 
 use crate::gpu_readback::GpuReadbackPlugin;
 use crate::{
@@ -287,26 +288,28 @@ impl Plugin for RenderPlugin {
             }
             RenderCreation::Automatic(render_creation) => {
                 if let Some(backends) = render_creation.backends {
-                    let future_renderer_resources_wrapper = Arc::new(Mutex::new(None));
-                    app.insert_resource(FutureRendererResources(
-                        future_renderer_resources_wrapper.clone(),
-                    ));
+                    for backends in [backends, Backends::VULKAN] {
+                        let future_renderer_resources_wrapper = Arc::new(Mutex::new(None));
+                        app.insert_resource(FutureRendererResources(
+                            future_renderer_resources_wrapper.clone(),
+                        ));
 
-                    let mut system_state: SystemState<
-                        Query<&RawHandleWrapperHolder, With<PrimaryWindow>>,
-                    > = SystemState::new(app.world_mut());
-                    let primary_window = system_state.get(app.world()).get_single().ok().cloned();
-                    let settings = render_creation.clone();
-                    let async_renderer = async move {
-                        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-                            backends,
-                            dx12_shader_compiler: settings.dx12_shader_compiler.clone(),
-                            flags: settings.instance_flags,
-                            gles_minor_version: settings.gles3_minor_version,
-                        });
+                        let mut system_state: SystemState<
+                            Query<&RawHandleWrapperHolder, With<PrimaryWindow>>,
+                        > = SystemState::new(app.world_mut());
+                        let primary_window =
+                            system_state.get(app.world()).get_single().ok().cloned();
+                        let settings = render_creation.clone();
+                        let async_renderer = async move {
+                            let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+                                backends,
+                                dx12_shader_compiler: settings.dx12_shader_compiler.clone(),
+                                flags: settings.instance_flags,
+                                gles_minor_version: settings.gles3_minor_version,
+                            });
 
-                        // SAFETY: Plugins should be set up on the main thread.
-                        let surface = primary_window.and_then(|wrapper| unsafe {
+                            // SAFETY: Plugins should be set up on the main thread.
+                            let surface = primary_window.and_then(|wrapper| unsafe {
                             let maybe_handle = wrapper.0.lock().expect(
                                 "Couldn't get the window handle in time for renderer initialization",
                             );
@@ -322,42 +325,48 @@ impl Plugin for RenderPlugin {
                             }
                         });
 
-                        let request_adapter_options = wgpu::RequestAdapterOptions {
-                            power_preference: settings.power_preference,
-                            compatible_surface: surface.as_ref(),
-                            ..Default::default()
+                            let request_adapter_options = wgpu::RequestAdapterOptions {
+                                power_preference: settings.power_preference,
+                                compatible_surface: surface.as_ref(),
+                                ..Default::default()
+                            };
+
+                            let (device, queue, adapter_info, render_adapter) =
+                                renderer::initialize_renderer(
+                                    &instance,
+                                    &settings,
+                                    &request_adapter_options,
+                                )
+                                .await?;
+                            debug!("Configured wgpu adapter Limits: {:#?}", device.limits());
+                            debug!("Configured wgpu adapter Features: {:#?}", device.features());
+                            let mut future_renderer_resources_inner =
+                                future_renderer_resources_wrapper.lock().unwrap();
+                            *future_renderer_resources_inner = Some((
+                                device,
+                                queue,
+                                adapter_info,
+                                render_adapter,
+                                RenderInstance(Arc::new(WgpuWrapper::new(instance))),
+                            ));
+                            Some(())
                         };
+                        // In wasm, spawn a task and detach it for execution
+                        #[cfg(target_arch = "wasm32")]
+                        bevy_tasks::IoTaskPool::get()
+                            .spawn_local(async_renderer)
+                            .detach();
+                        // Otherwise, just block for it to complete
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let result = futures_lite::future::block_on(async_renderer);
 
-                        let (device, queue, adapter_info, render_adapter) =
-                            renderer::initialize_renderer(
-                                &instance,
-                                &settings,
-                                &request_adapter_options,
-                            )
-                            .await;
-                        debug!("Configured wgpu adapter Limits: {:#?}", device.limits());
-                        debug!("Configured wgpu adapter Features: {:#?}", device.features());
-                        let mut future_renderer_resources_inner =
-                            future_renderer_resources_wrapper.lock().unwrap();
-                        *future_renderer_resources_inner = Some((
-                            device,
-                            queue,
-                            adapter_info,
-                            render_adapter,
-                            RenderInstance(Arc::new(WgpuWrapper::new(instance))),
-                        ));
-                    };
-                    // In wasm, spawn a task and detach it for execution
-                    #[cfg(target_arch = "wasm32")]
-                    bevy_tasks::IoTaskPool::get()
-                        .spawn_local(async_renderer)
-                        .detach();
-                    // Otherwise, just block for it to complete
-                    #[cfg(not(target_arch = "wasm32"))]
-                    futures_lite::future::block_on(async_renderer);
-
-                    // SAFETY: Plugins should be set up on the main thread.
-                    unsafe { initialize_render_app(app) };
+                        if result.is_none() {
+                            continue;
+                        }
+                        // SAFETY: Plugins should be set up on the main thread.
+                        unsafe { initialize_render_app(app) };
+                        break;
+                    }
                 }
             }
         };
