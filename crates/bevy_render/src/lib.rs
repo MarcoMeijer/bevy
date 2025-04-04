@@ -288,7 +288,7 @@ impl Plugin for RenderPlugin {
             }
             RenderCreation::Automatic(render_creation) => {
                 if let Some(backends) = render_creation.backends {
-                    for backends in [backends, Backends::VULKAN] {
+                    for backends in [backends, Backends::VULKAN, Backends::GL, Backends::DX12] {
                         let future_renderer_resources_wrapper = Arc::new(Mutex::new(None));
                         app.insert_resource(FutureRendererResources(
                             future_renderer_resources_wrapper.clone(),
@@ -310,20 +310,20 @@ impl Plugin for RenderPlugin {
 
                             // SAFETY: Plugins should be set up on the main thread.
                             let surface = primary_window.and_then(|wrapper| unsafe {
-                            let maybe_handle = wrapper.0.lock().expect(
-                                "Couldn't get the window handle in time for renderer initialization",
-                            );
-                            if let Some(wrapper) = maybe_handle.as_ref() {
-                                let handle = wrapper.get_handle();
-                                Some(
-                                    instance
-                                        .create_surface(handle)
-                                        .expect("Failed to create wgpu surface"),
-                                )
-                            } else {
-                                None
-                            }
-                        });
+                                let maybe_handle = wrapper.0.lock().expect(
+                                    "Couldn't get the window handle in time for renderer initialization",
+                                );
+                                if let Some(wrapper) = maybe_handle.as_ref() {
+                                    let handle = wrapper.get_handle();
+                                    Some(
+                                        instance
+                                            .create_surface(handle)
+                                            .ok("Failed to create wgpu surface"),
+                                    )
+                                } else {
+                                    None
+                                }
+                            });
 
                             let request_adapter_options = wgpu::RequestAdapterOptions {
                                 power_preference: settings.power_preference,
