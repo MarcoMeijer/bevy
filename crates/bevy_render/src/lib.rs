@@ -318,7 +318,7 @@ impl Plugin for RenderPlugin {
                                     Some(
                                         instance
                                             .create_surface(handle)
-                                            .ok("Failed to create wgpu surface"),
+                                            .expect("Failed to create wgpu surface"),
                                     )
                                 } else {
                                     None
