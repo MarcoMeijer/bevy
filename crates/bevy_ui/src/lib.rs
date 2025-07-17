@@ -188,6 +188,7 @@ impl Plugin for UiPlugin {
             );
 
         let ui_layout_system_config = ui_layout_system
+            .run_if(should_not_skip_ui_layout)
             .in_set(UiSystem::Layout)
             .before(TransformSystem::TransformPropagate);
 

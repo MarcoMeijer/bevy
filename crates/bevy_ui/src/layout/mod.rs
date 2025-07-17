@@ -7,6 +7,7 @@ use bevy_ecs::{
     change_detection::{DetectChanges, DetectChangesMut},
     entity::{Entity, EntityHashMap, EntityHashSet},
     event::EventReader,
+    prelude::{Changed, Or},
     query::With,
     removal_detection::RemovedComponents,
     system::{Commands, Local, Query, Res, ResMut, SystemParam},
@@ -101,6 +102,20 @@ struct CameraLayoutInfo {
     resized: bool,
     scale_factor: f32,
     root_nodes: Vec<Entity>,
+}
+
+pub fn should_not_skip_ui_layout(
+    scale_factor_events: EventReader<WindowScaleFactorChanged>,
+    ui_scale: Res<UiScale>,
+    content_sizes: Query<Entity, Changed<ContentSize>>,
+    nodes: Query<Entity, Or<(Changed<Node>, Changed<ScrollPosition>)>>,
+    node_hierarchy: Query<Entity, (With<Node>, Or<(Changed<Children>, Changed<Parent>)>)>,
+) -> bool {
+    !scale_factor_events.is_empty()
+        || ui_scale.is_changed()
+        || !content_sizes.is_empty()
+        || !nodes.is_empty()
+        || !node_hierarchy.is_empty()
 }
 
 /// Updates the UI's layout tree, computes the new layout geometry and then updates the sizes and transforms of all the UI nodes.
@@ -224,26 +239,6 @@ pub fn ui_layout_system(
                         .map(|c| c.is_changed() || c.measure.is_some())
                         .unwrap_or(false)
                 {
-                    if camera.resized {
-                        println!("{entity:?} layout: due to camera resized");
-                    }
-                    if !scale_factor_events.is_empty() {
-                        println!("{entity:?} layout: due to scale factor events");
-                    }
-                    if ui_scale.is_changed() {
-                        println!("{entity:?} layout: due to UI scale change");
-                    }
-                    if node.is_changed() {
-                        println!("{entity:?} layout: due to Node changed");
-                    }
-                    if content_size
-                        .as_ref()
-                        .map(|c| c.is_changed())
-                        .unwrap_or(false)
-                    {
-                        println!("{entity:?} layout: due to ContentSize changed");
-                    }
-
                     let layout_context = LayoutContext::new(
                         camera.scale_factor,
                         [camera.size.x as f32, camera.size.y as f32].into(),
