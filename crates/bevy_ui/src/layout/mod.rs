@@ -224,6 +224,26 @@ pub fn ui_layout_system(
                         .map(|c| c.is_changed() || c.measure.is_some())
                         .unwrap_or(false)
                 {
+                    if camera.resized {
+                        println!("{entity:?} layout: due to camera resized");
+                    }
+                    if !scale_factor_events.is_empty() {
+                        println!("{entity:?} layout: due to scale factor events");
+                    }
+                    if ui_scale.is_changed() {
+                        println!("{entity:?} layout: due to UI scale change");
+                    }
+                    if node.is_changed() {
+                        println!("{entity:?} layout: due to Node changed");
+                    }
+                    if content_size
+                        .as_ref()
+                        .map(|c| c.is_changed())
+                        .unwrap_or(false)
+                    {
+                        println!("{entity:?} layout: due to ContentSize changed");
+                    }
+
                     let layout_context = LayoutContext::new(
                         camera.scale_factor,
                         [camera.size.x as f32, camera.size.y as f32].into(),
